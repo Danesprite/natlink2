@@ -1542,41 +1542,26 @@ gramobj_dealloc(PyObject *self)
 
 
 //---------------------------------------------------------------------------
-// This datastructure tells Python which methods for a new class (GramObj in
-// this casze) are defined.  We actually define very few methods since we
-// are not creating a number or sequence-type object.
+// These data structures define a new (heap allocated) class: GramObj.
+// We actually define very few methods since we are not creating a number or
+// sequence-type object.
 
-static PyTypeObject gramobj_stackType = {
-	PyVarObject_HEAD_INIT(NULL, 0) // 0 ob-size
-	"GramObj",				        /* tp_name */
-	sizeof(CGrammarObject),	        /* tp_basicsize */
-	0,					          	/* tp_itemsize */
-	(destructor)gramobj_dealloc,    /* tp_dealloc */
-	0,                              /* tp_vectorcall_offset */
-	0,                              /* tp_getattr */
-	0,                              /* tp_setattr */
-	0,                              /* tp_as_async */
-	0,                              /* tp_repr */
-	0,                              /* tp_as_number */
-	0,                              /* tp_as_sequence */
-	0,                              /* tp_as_mapping */
-	0,                              /* tp_hash */
-	0,                              /* tp_call */
-	0,                              /* tp_str */
-	PyObject_GenericGetAttr,        /* tp_getattro */
-	0,                              /* tp_setattro */
-	0,                              /* tp_as_buffer */
-	Py_TPFLAGS_DEFAULT,             /* tp_flags */
-	0,                              /* tp_doc */
-	0,                              /* tp_traverse */
-	0,                              /* tp_clear */
-	0,                              /* tp_richcompare */
-	0,                              /* tp_weaklistoffset */
-	0,                              /* tp_iter */
-	0,                              /* tp_iternext */
-	gramobj_methods,                /* tp_methods */
-	// remainder of fields are NULL
+static PyType_Slot gramobj_Type_slots[] = {
+	{ Py_tp_dealloc, (destructor)gramobj_dealloc },
+	{ Py_tp_getattro, PyObject_GenericGetAttr },
+	{ Py_tp_methods, gramobj_methods },
+	{ NULL }
 };
+
+static PyType_Spec gramobj_Type_spec = {
+	"GramObj",						/* tp_name */
+	sizeof(CGrammarObject),			/* tp_basicsize */
+	0,								/* tp_itemsize */
+	Py_TPFLAGS_DEFAULT,				/* tp_flags */
+	gramobj_Type_slots
+};
+
+static PyObject * gramobj_Type = PyType_FromSpec( &gramobj_Type_spec );
 
 //---------------------------------------------------------------------------
 // gramObj = GramObj() from Python
@@ -1593,7 +1578,8 @@ gramobj_new( PyObject *self, PyObject *args )
 		return NULL;
 	}
 
-	CGrammarObject * pObj = PyObject_New(CGrammarObject, &gramobj_stackType );
+	PyTypeObject * pType = (PyTypeObject *)gramobj_Type;
+	CGrammarObject * pObj = PyObject_New( CGrammarObject, pType );
 	if( pObj == NULL )
 	{
 		return NULL;
@@ -1776,44 +1762,26 @@ resobj_dealloc(PyObject *self)
 }
 
 //---------------------------------------------------------------------------
-// This datastructure tells Python which methods for a new class (ResObj in
-// this casze) are defined.  We actually define very few methods since we
-// are not creating a number or sequence-type object.
+// These data structures define a new (heap allocated) class: ResObj.
+// We actually define very few methods since we are not creating a number or
+// sequence-type object.
 
-static PyTypeObject resobj_stackType = {
-	PyVarObject_HEAD_INIT(&PyType_Type, 0) //ob_size
-	"ResObj",				        /* tp_name */
-	sizeof(CResultObject),	        /* tp_basicsize */
-	0,					          	/* tp_itemsize */
-	(destructor)resobj_dealloc,     /* tp_dealloc */
-	0,                              /* tp_vectorcall_offset */
-	0,                              /* tp_getattr */
-	0,                              /* tp_setattr */
-	0,                              /* tp_as_async */
-	0,                              /* tp_repr */
-	0,                              /* tp_as_number */
-	0,                              /* tp_as_sequence */
-	0,                              /* tp_as_mapping */
-	0,                              /* tp_hash */
-	0,                              /* tp_call */
-	0,                              /* tp_str */
-	PyObject_GenericGetAttr,        /* tp_getattro */
-	0,                              /* tp_setattro */
-	0,                              /* tp_as_buffer */
-	Py_TPFLAGS_DEFAULT,             /* tp_flags */
-	0,                              /* tp_doc */
-	0,                              /* tp_traverse */
-	0,                              /* tp_clear */
-	0,                              /* tp_richcompare */
-	0,                              /* tp_weaklistoffset */
-	0,                              /* tp_iter */
-	0,                              /* tp_iternext */
-	resobj_methods,                 /* tp_methods */
-
-
-	// remainder of fields are NULL
+static PyType_Slot resobj_Type_slots[] = {
+	{ Py_tp_dealloc, (destructor)resobj_dealloc },
+	{ Py_tp_getattro, PyObject_GenericGetAttr },
+	{ Py_tp_methods, resobj_methods },
+	{ NULL }
 };
 
+static PyType_Spec resobj_Type_spec = {
+	"ResObj",						/* tp_name */
+	sizeof(CResultObject),			/* tp_basicsize */
+	0,								/* tp_itemsize */
+	Py_TPFLAGS_DEFAULT,				/* tp_flags */
+	resobj_Type_slots
+};
+
+static PyObject * resobj_Type = PyType_FromSpec( &resobj_Type_spec );
 
 //---------------------------------------------------------------------------
 // Create a new ResObj.  This is not called from Python.  Instead it is
@@ -1821,7 +1789,7 @@ static PyTypeObject resobj_stackType = {
 
 CResultObject * resobj_new()
 {
-	return PyObject_NEW(CResultObject, &resobj_stackType );
+	return PyObject_New( CResultObject, (PyTypeObject *)resobj_Type );
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -2127,41 +2095,26 @@ dictobj_dealloc(PyObject *self)
 }
 
 //---------------------------------------------------------------------------
-// This datastructure tells Python which methods for a new class (DictObj in
-// this casze) are defined.  We actually define very few methods since we
-// are not creating a number or sequence-type object.
+// These data structures define a new (heap allocated) class: DictObj.
+// We actually define very few methods since we are not creating a number or
+// sequence-type object.
 
-static PyTypeObject dictobj_stackType = {
-	PyVarObject_HEAD_INIT(&PyType_Type, 0) // ob_size
-	"DictObj",				        /* tp_name */
-	sizeof(CDictationObject),	    /* tp_basicsize */
-	0,					          	/* tp_itemsize */
-	(destructor)dictobj_dealloc,    /* tp_dealloc */
-	0,                              /* tp_vectorcall_offset */
-	0,                              /* tp_getattr */
-	0,                              /* tp_setattr */
-	0,                              /* tp_as_async */
-	0,                              /* tp_repr */
-	0,                              /* tp_as_number */
-	0,                              /* tp_as_sequence */
-	0,                              /* tp_as_mapping */
-	0,                              /* tp_hash */
-	0,                              /* tp_call */
-	0,                              /* tp_str */
-	PyObject_GenericGetAttr,        /* tp_getattro */
-	0,                              /* tp_setattro */
-	0,                              /* tp_as_buffer */
-	Py_TPFLAGS_DEFAULT,             /* tp_flags */
-	0,                              /* tp_doc */
-	0,                              /* tp_traverse */
-	0,                              /* tp_clear */
-	0,                              /* tp_richcompare */
-	0,                              /* tp_weaklistoffset */
-	0,                              /* tp_iter */
-	0,                              /* tp_iternext */
-	dictobj_methods,                /* tp_methods */
-	// remainder of fields are NULL
+static PyType_Slot dictobj_Type_slots[] = {
+	{ Py_tp_dealloc, (destructor)dictobj_dealloc },
+	{ Py_tp_getattro, PyObject_GenericGetAttr },
+	{ Py_tp_methods, dictobj_methods },
+	{ NULL }
 };
+
+static PyType_Spec dictobj_Type_spec = {
+	"DictObj",						/* tp_name */
+	sizeof(CDictationObject),		/* tp_basicsize */
+	0,								/* tp_itemsize */
+	Py_TPFLAGS_DEFAULT,				/* tp_flags */
+	dictobj_Type_slots
+};
+
+static PyObject * dictobj_Type = PyType_FromSpec( &dictobj_Type_spec );
 
 //---------------------------------------------------------------------------
 // dictObj = DictObj() from Python
@@ -2178,7 +2131,8 @@ dictobj_new( PyObject *self, PyObject *args )
 		return NULL;
 	}
 
-	CDictationObject * pObj = PyObject_NEW(CDictationObject, &dictobj_stackType );
+	PyTypeObject * pType = (PyTypeObject *)dictobj_Type;
+	CDictationObject * pObj = PyObject_New( CDictationObject, pType );
 	if( pObj == NULL )
 	{
 		return NULL;
@@ -2263,7 +2217,8 @@ PyMODINIT_FUNC PyInit_natlink(void){
 	pMod = PyModule_Create( &NatlinkModule );
 	initExceptions( pMod );
 
-	if( PyErr_Occurred() )
+	if( PyErr_Occurred() || gramobj_Type == NULL || resobj_Type == NULL ||
+		dictobj_Type == NULL )
 	{
 		Py_FatalError( "Can't initialize natlink module" );
 	}
