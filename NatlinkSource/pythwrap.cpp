@@ -39,7 +39,7 @@ PyMem_DEL.  Changing these calls to PyObject_Del below eliminated the crashes.
 CDragonCode cDragon;
 
 //---------------------------------------------------------------------------
-// This utility subroutine takes a PyObject which reprents the arguments
+// This utility subroutine takes a PyObject which represents the arguments
 // passed to a Python routine and fills in an array of strings with the
 // strings extracted from the Python argument.  The last entry in the array
 // will be a NULL pointer.
@@ -85,15 +85,18 @@ PCCHAR * parseStringArray( const char * funcName, PyObject * args )
 
 		if( !pyWord || !PyUnicode_Check( pyWord ) )
 		{
-			PyErr_Format( PyExc_TypeError, "all arguments passed to %s must be strings", funcName );
+			PyErr_Format( PyExc_TypeError,
+				"all arguments passed to %s must be strings", funcName );
 			delete [] ppWords;
 			return 0;
 		}
 
-		PyObject *encoded = PyUnicode_AsEncodedString(pyWord, "windows-1252", NULL);
-		if (encoded == NULL) {
-			PyErr_SetString(PyExc_UnicodeEncodeError, "Failed to encode input string using windows-1252 codec.");
-			Py_XDECREF(encoded);
+		PyObject * encoded = PyUnicode_AsEncodedString( pyWord, "windows-1252",
+			NULL);
+		if( encoded == NULL )
+		{
+			PyErr_SetString( PyExc_UnicodeEncodeError,
+				"failed to encode input string using windows-1252 codec" );
 			delete [] ppWords;
 			return NULL;
 		}
@@ -572,7 +575,6 @@ natlink_execScript( PyObject *self, PyObject *args )
 		return NULL;
 	}
 
-//	todo Fix str/unicode
 	// if there is a second argument then it should be a list of strings
 
 	PCCHAR * ppWords = NULL;
@@ -604,7 +606,18 @@ natlink_execScript( PyObject *self, PyObject *args )
 				return NULL;
 			}
 
-			ppWords[i] = PyUnicode_AsUTF8( pyWord );
+			PyObject *encoded = PyUnicode_AsEncodedString( pyWord, "windows-1252",
+				NULL );
+			if(encoded == NULL)
+			{
+				PyErr_SetString( PyExc_UnicodeEncodeError,
+					"failed to encode input string using windows-1252 codec" );
+				delete [] ppWords;
+				return NULL;
+			}
+			// TODO: Should be calling DECREF here, but PyBytes_AsString
+			// returns a pointer to internal data
+			ppWords[i] = PyBytes_AsString(encoded);
 		}
 	}
 
@@ -1710,20 +1723,12 @@ resobj_getSelectInfo( PyObject *self, PyObject *args )
 		return NULL;
 	}
 
-	// this code makes sure that the first parameter is a GramObj class
-	PyObject * pyName = NULL;
-	PyObject * pyType = PyObject_Type(pGrammar);
-	if( pyType != NULL )
+	// ensure that the first parameter is a GramObj
+	PyObject * pyType = gramobj_Type;
+	if( pyType != NULL && PyObject_IsInstance( pGrammar, pyType ) != 1 )
 	{
-		PyObject * strName = Py_BuildValue( "s", "__name__" );
-		pyName = PyObject_GetAttr( pyType, strName );
-		Py_XDECREF( strName );
-	}
-	//	todo Fix str/unicode
-	if( pyName == NULL || !PyUnicode_Check( pyName ) ||
-		0 != strcmp( PyUnicode_AsUTF8( pyName ), "GramObj" ) )
-	{
-		PyErr_SetString( PyExc_TypeError, "first parameter must be a GramObj instance" );
+		const char * string = "first parameter must be a GramObj instance";
+		PyErr_SetString( PyExc_TypeError, string );
 		return NULL;
 	}
 
