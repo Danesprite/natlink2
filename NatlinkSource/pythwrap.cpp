@@ -1574,7 +1574,7 @@ static PyType_Spec gramobj_Type_spec = {
 	gramobj_Type_slots
 };
 
-static PyObject * gramobj_Type = PyType_FromSpec( &gramobj_Type_spec );
+static PyObject * gramobj_Type = NULL;
 
 //---------------------------------------------------------------------------
 // gramObj = GramObj() from Python
@@ -1786,7 +1786,7 @@ static PyType_Spec resobj_Type_spec = {
 	resobj_Type_slots
 };
 
-static PyObject * resobj_Type = PyType_FromSpec( &resobj_Type_spec );
+static PyObject * resobj_Type = NULL;
 
 //---------------------------------------------------------------------------
 // Create a new ResObj.  This is not called from Python.  Instead it is
@@ -2119,7 +2119,7 @@ static PyType_Spec dictobj_Type_spec = {
 	dictobj_Type_slots
 };
 
-static PyObject * dictobj_Type = PyType_FromSpec( &dictobj_Type_spec );
+static PyObject * dictobj_Type = NULL;
 
 //---------------------------------------------------------------------------
 // dictObj = DictObj() from Python
@@ -2155,6 +2155,19 @@ dictobj_new( PyObject *self, PyObject *args )
 }
 
 /////////////////////////////////////////////////////////////////////////////
+
+//---------------------------------------------------------------------------
+// This function initializes the GramObj, ResObj and DictObj types.
+// Note: This must be called close to module initialization time.
+
+BOOL initNatlinkObjTypes(void)
+{
+	gramobj_Type = PyType_FromSpec( &gramobj_Type_spec );
+	resobj_Type = PyType_FromSpec( &resobj_Type_spec );
+	dictobj_Type = PyType_FromSpec( &dictobj_Type_spec );
+	return gramobj_Type && dictobj_Type && resobj_Type;
+}
+
 
 //---------------------------------------------------------------------------
 // These are the Python functions visible in this module.
@@ -2219,11 +2232,11 @@ PyMODINIT_FUNC PyInit_natlink(void){
 
 	CoInitialize( NULL );
 
+	BOOL typesInitialized = initNatlinkObjTypes();
 	pMod = PyModule_Create( &NatlinkModule );
 	initExceptions( pMod );
 
-	if( PyErr_Occurred() || gramobj_Type == NULL || resobj_Type == NULL ||
-		dictobj_Type == NULL )
+	if( PyErr_Occurred() || !typesInitialized )
 	{
 		Py_FatalError( "Can't initialize natlink module" );
 	}
