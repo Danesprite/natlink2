@@ -1809,7 +1809,12 @@ BOOL CDragonCode::natConnect( IServiceProvider * pIDgnSite, BOOL bUseThreads )
 	{
 		PyThreadState * threadStateSave = PyThreadState_Swap( NULL );
 		assert( threadStateSave != NULL );
-		m_pThreadState = PyThreadState_New( threadStateSave->interp );
+		
+		// DF: The following incantation has been replaced with a simple
+		//     assignment in order to use Python's limited C API.  This
+		//     seems to work OK.
+		// m_pThreadState = PyThreadState_New( threadStateSave->interp );
+		m_pThreadState = threadStateSave;
 		PyThreadState_Swap( threadStateSave );
 	}
 
