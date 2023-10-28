@@ -47,17 +47,19 @@ set(HEADERS_FILES
 source_group("Headers" FILES ${HEADERS_FILES})
 
 # TODO This should not be hard coded...
-include_directories("C:\\Python32\\include")
+# Any 32-bit Python 3.x installation, where x >= 3, should work.
+include_directories("C:\\Python33\\include")
 include_directories("extern")
-link_directories("C:\\Python32\\libs")
+link_directories("C:\\Python33\\libs")
 
 add_compile_definitions(DRAGON_VERSION=15)
 # Asserts that Py_ssize_t is used in argument parsing,
 # see note at top of https://docs.python.org/3/c-api/arg.html
 add_compile_definitions(PY_SSIZE_T_CLEAN)
 
-# Ensures a Stable Application Binary Interface forpython 3.2+
-add_compile_definitions(Py_LIMITED_API=0x03020000)
+# Ensures a Stable Application Binary Interface for Python 3.3+.  This means
+# Python 3.3, 3.4, 3.5 and so on can use the same DLL.
+add_compile_definitions(Py_LIMITED_API=0x03030000)
 
 # ensures that both the stdlib and vc runtime are statically linked into
 # the DLL -> fewer dependencies for the user
