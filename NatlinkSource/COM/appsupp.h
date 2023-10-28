@@ -30,6 +30,9 @@ public:
 	// call this function to re-initialize the Python interface
 	void reloadPython();
 
+	// this adds our core dir to sys.path and is called by Register().
+	BOOL addCoreToSysPath();
+
 DECLARE_REGISTRY_RESOURCEID(IDR_APPSUPP)
 DECLARE_NOT_AGGREGATABLE(CDgnAppSupport)
 

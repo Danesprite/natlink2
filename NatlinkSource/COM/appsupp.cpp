@@ -41,7 +41,6 @@ CDgnAppSupport::~CDgnAppSupport()
 }
 
 
-
 //---------------------------------------------------------------------------
 // Called by NatSpeak once when the compatibility module is first loaded.
 // This will never be called more than once in normal use.  (Although if one
@@ -79,28 +78,8 @@ STDMETHODIMP CDgnAppSupport::Register( IServiceProvider * pIDgnSite )
 		return S_OK;
 	}
 
-	/*
-	* https://www.python.org/dev/peps/pep-0514/
-	* According to PEP514 python should scan this registry location when
-	* it builds sys.path when the interpreter is initialised. At least on
-	* my system this is not happening correctly, and natlinkmain is not being
-	* found. This code pulls the value (set by the config scripts) from the
-	* registry manually and adds it to the module search path.
-	*
-	* Exceptions raised here will not cause a crash, so the worst case scenario
-	* is that we add a value to the path which is already there.
-	*/
-	PyRun_SimpleString("import winreg, sys");
-	PyRun_SimpleString("hive, key, flags = (winreg.HKEY_LOCAL_MACHINE, f\"Software\\\\Python\\\\PythonCore\\\\{str(sys.winver)}\\\\PythonPath\\\\Natlink\", winreg.KEY_WOW64_32KEY)");
-	// PyRun_SimpleString returns 0 on success and -1 if an exception is raised.
-	if (PyRun_SimpleString("natlink_key = winreg.OpenKeyEx(hive, key, access=winreg.KEY_READ | flags)")) {
-		m_pDragCode->displayText("Failed to find Natlink key in Windows registry.\r\n");
-	}
-	if (PyRun_SimpleString("core_path = winreg.QueryValue(natlink_key, \"\")")) {
-		m_pDragCode->displayText("Failed to extract value from Natlink key.\r\n");
-	}
-	PyRun_SimpleString("sys.path.append(core_path)");
-	PyRun_SimpleString("winreg.CloseKey(natlink_key)");
+	// attempt to add the natlink core directory to sys.path.
+	addCoreToSysPath();
 
 	// now load the Python code which sets all the callback functions
 	m_pDragCode->setDuringInit( TRUE );
@@ -191,4 +170,66 @@ STDMETHODIMP CDgnAppSupport::EndProcess( DWORD dwProcessID )
 void CDgnAppSupport::reloadPython()
 {
 	PyImport_ReloadModule(m_pNatLinkMain);
+}
+
+//---------------------------------------------------------------------------
+// This finds and adds the Natlink "core" directory to sys.path, if possible.
+// Called in Register().
+
+BOOL CDgnAppSupport::addCoreToSysPath()
+{
+	char * moduleName;
+	const char * codeString, * errorMessage;
+	PyObject * pModule, * pSysModules;
+
+	/*
+	* https://www.python.org/dev/peps/pep-0514/
+	* According to PEP514 python should scan this registry location when
+	* it builds sys.path when the interpreter is initialised. At least on
+	* my system this is not happening correctly, and natlinkmain is not being
+	* found. This code pulls the value (set by the config scripts) from the
+	* registry manually and adds it to the module search path.
+	*
+	* Exceptions raised here will not cause a crash, so the worst case scenario
+	* is that we add a value to the path which is already there.
+	*/
+
+	// NOTE: Ensure the following Python code works in each supported Python
+	//       version; the stable ABI does not help us here.
+
+	moduleName = "TempPyModule";
+	codeString =
+		"import winreg, sys, traceback\n"
+		"hive = winreg.HKEY_LOCAL_MACHINE\n"
+		"key = \"Software\\\\Python\\\\PythonCore\\\\\" + sys.winver + \"\\\\PythonPath\\\\Natlink\"\n"
+		"flags = winreg.KEY_READ | winreg.KEY_WOW64_32KEY\n"
+		"natlink_key = winreg.OpenKeyEx(hive, key, access=flags)\n"
+		"core_path = winreg.QueryValue(natlink_key, \"\")\n"
+		"sys.path.append(core_path)\n"
+		"winreg.CloseKey(natlink_key)\n";
+
+	pModule = executePyCodeAsModule( codeString, moduleName );
+	if( !pModule )
+	{
+		errorMessage = parsePyErrString();
+		if( errorMessage )
+		{
+			m_pDragCode->displayText(
+				"An exception occurred during addCoreToSysPath():\r\n" );
+			m_pDragCode->displayText( errorMessage, TRUE );
+			m_pDragCode->displayText( "\r\n" );
+		}
+		PyErr_Clear();
+	}
+	else
+	{
+		pSysModules = PySys_GetObject( "modules" );
+		if( pSysModules )
+		{
+			PyDict_DelItemString( pSysModules, moduleName );
+			Py_DECREF( pSysModules );
+		}
+	}
+	Py_XDECREF( pModule );
+	return pModule != 0;
 }
