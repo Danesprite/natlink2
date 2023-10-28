@@ -15,9 +15,12 @@
 #include "../DragonCode.h"
 #include "appsupp.h"
 // #include <plog/Log.h>
+
 // from PythWrap.cpp
 CDragonCode * initModule();
+PCCHAR parsePyString( PyObject * pyWord, const char * encoding );
 PCCHAR * parseStringArray( const char * funcName, PyObject * args );
+PCCHAR parsePyErrString();
 
 /////////////////////////////////////////////////////////////////////////////
 // CDgnAppSupport
@@ -51,9 +54,10 @@ CDgnAppSupport::~CDgnAppSupport()
 STDMETHODIMP CDgnAppSupport::Register( IServiceProvider * pIDgnSite )
 {
 	BOOL bSuccess;
+	PCCHAR errorMessage;
+
 	// load and initialize the Python system
 	Py_Initialize();
-
 
 	// load the natlink module into Python and return a pointer to the
 	// shared CDragonCode object
@@ -107,29 +111,13 @@ STDMETHODIMP CDgnAppSupport::Register( IServiceProvider * pIDgnSite )
 		OutputDebugString(
 			TEXT( "NatLink: an exception occurred loading 'natlinkmain' module" ) ); // RW TEXT macro added
 		m_pDragCode->displayText(
-			"An exception occurred loading 'natlinkmain' module\r\n", TRUE );
-		if ( PyErr_Occurred() )
+			"An exception occurred loading 'natlinkmain' module:\r\n", TRUE );
+		
+		errorMessage = parsePyErrString();
+		if( errorMessage )
 		{
-			PyObject * pType, * pValue, *pTraceback;
-			PyErr_Fetch(&pType, &pValue, &pTraceback);
-			if( pValue )
-			{
-				PyObject * pStr = PyObject_Str(pValue);
-				if( pStr ) {
-					PyObject * pStrTuple = Py_BuildValue( "(O)", pStr );
-					PCCHAR * ppStrs = parseStringArray( __FUNCTION__,
-						pStrTuple );
-					Py_XDECREF( pStrTuple );
-					if( ppStrs )
-					{
-						m_pDragCode->displayText("Error message:\r\n");
-						m_pDragCode->displayText(ppStrs[0], TRUE);
-						delete [] ppStrs;
-					}
-				}
-				Py_XDECREF(pStr);
-			}
-			PyErr_Restore( pType, pValue, pTraceback );
+			m_pDragCode->displayText( errorMessage, TRUE );
+			m_pDragCode->displayText( "\r\n" );
 		}
 	}
 

@@ -39,6 +39,26 @@ PyMem_DEL.  Changing these calls to PyObject_Del below eliminated the crashes.
 CDragonCode cDragon;
 
 //---------------------------------------------------------------------------
+// This utility subroutine takes a Unicode PyObject, encodes it with the
+// specified encoding and returns a C string.
+//
+// TODO Fix this subroutine's memory leakage.
+
+PCCHAR parsePyString(PyObject * pyWord, const char * encoding )
+{
+	PyObject * encoded = PyUnicode_AsEncodedString( pyWord, encoding, NULL );
+	if( encoded == NULL )
+	{
+		PyErr_Format( PyExc_UnicodeEncodeError,
+			"failed to encode input string using %s codec", encoding );
+		return NULL;
+	}
+	// TODO: Should be using strdup() and calling DECREF here;
+	// PyBytes_AsString returns a pointer to internal data.
+	return PyBytes_AsString( encoded );
+}
+
+//---------------------------------------------------------------------------
 // This utility subroutine takes a PyObject which represents the arguments
 // passed to a Python routine and fills in an array of strings with the
 // strings extracted from the Python argument.  The last entry in the array
@@ -46,7 +66,6 @@ CDragonCode cDragon;
 //
 // The caller must delete the array.  This function returns 0 on error (in
 // which case the array does not need to be deleted).
-
 
 PCCHAR * parseStringArray( const char * funcName, PyObject * args )
 {
@@ -56,7 +75,8 @@ PCCHAR * parseStringArray( const char * funcName, PyObject * args )
 	int len = PyTuple_Size( args );
 	if( len == 0 )
 	{
-		PyErr_Format( PyExc_TypeError, "%s requires at least 1 argument", funcName );
+		PyErr_Format( PyExc_TypeError, "%s requires at least 1 argument",
+			funcName );
 		return NULL;
 	}
 
@@ -88,21 +108,16 @@ PCCHAR * parseStringArray( const char * funcName, PyObject * args )
 			PyErr_Format( PyExc_TypeError,
 				"all arguments passed to %s must be strings", funcName );
 			delete [] ppWords;
-			return 0;
+			return NULL;
 		}
 
-		PyObject * encoded = PyUnicode_AsEncodedString( pyWord, "windows-1252",
-			NULL);
-		if( encoded == NULL )
+		PCCHAR pWord = parsePyString( pyWord, "windows-1252" );
+		if( !pWord )
 		{
-			PyErr_SetString( PyExc_UnicodeEncodeError,
-				"failed to encode input string using windows-1252 codec" );
 			delete [] ppWords;
 			return NULL;
 		}
-		// TODO: Should be calling DECREF here, but PyBytes_AsString
-		// returns a pointer to internal data
-		ppWords[i] = PyBytes_AsString(encoded);
+		ppWords[i] = pWord;
 	}
 
 	return ppWords;
@@ -231,6 +246,32 @@ DWORD * parsePlayList(
 
 	*pdwCount = len;
 	return adwList;
+}
+
+//---------------------------------------------------------------------------
+// This utility subroutine fetches and returns the string representation of
+// the set Python exception, if any.
+
+PCCHAR parsePyErrString( )
+{
+	PCCHAR res = NULL;
+	PyObject * pType, * pValue, * pTraceback, * pStr;
+
+	if( !PyErr_Occurred() )
+		return res;
+
+	PyErr_Fetch( &pType, &pValue, &pTraceback );
+	if( pValue )
+	{
+		pStr = PyObject_Str( pValue );
+		if( pStr )
+		{
+			res = parsePyString( pStr, "windows-1252" );
+		}
+		Py_XDECREF(pStr);
+	}
+	PyErr_Restore( pType, pValue, pTraceback );
+	return res;
 }
 
 //---------------------------------------------------------------------------
