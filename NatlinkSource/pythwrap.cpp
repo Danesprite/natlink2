@@ -275,6 +275,31 @@ PCCHAR parsePyErrString( )
 }
 
 //---------------------------------------------------------------------------
+// This utility subroutine takes a string of Python code; compiles and
+// executes it as a module; and returns the module object, or NULL if there
+// was an exception.
+//
+// The caller is responsible for passing the result to Py_DECREF, or handling
+// exceptions.  It is advisable to remove the module from sys.modules, too.
+
+PyObject * executePyCodeAsModule( PCCHAR codeString, char * moduleName )
+{
+	PyObject * pCode, * pModule;
+	pCode = Py_CompileString( codeString, "", Py_file_input );
+	if( !pCode )
+	{
+		return NULL;
+	}
+	pModule = PyImport_ExecCodeModule( moduleName, pCode );
+	if( !pModule )
+	{
+		Py_DECREF( pCode );
+		return NULL;
+	}
+	return pModule;
+}
+
+//---------------------------------------------------------------------------
 // natlink.isNatSpeakRunning() from Python
 //
 // See natlink.txt for documentation.

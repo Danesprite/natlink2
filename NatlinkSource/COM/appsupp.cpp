@@ -21,6 +21,7 @@ CDragonCode * initModule();
 PCCHAR parsePyString( PyObject * pyWord, const char * encoding );
 PCCHAR * parseStringArray( const char * funcName, PyObject * args );
 PCCHAR parsePyErrString();
+PyObject * executePyCodeAsModule( PCCHAR codeString, char * moduleName );
 
 /////////////////////////////////////////////////////////////////////////////
 // CDgnAppSupport
